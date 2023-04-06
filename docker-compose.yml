@@ -1,0 +1,62 @@
+version: "3"
+
+services:
+  # ===== Redis DB ========================================
+  redis:
+    image: redis:alpine
+    hostname: redis
+
+  # ===== Python applications (generating logs) ===========
+  the-fantom-menace:
+    build:
+      context: ./log-generator
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - EPISODE=1
+    depends_on:
+      - redis
+  attack-of-the-clones:
+    build:
+      context: ./log-generator
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - EPISODE=2
+    depends_on:
+      - redis
+  revenge-of-the-sith:
+    build:
+      context: ./log-generator
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - EPISODE=3
+    depends_on:
+      - redis
+
+  # ===== WebSocket server (to send logs to Vue app) ======
+  web-socket:
+    hostname: ws
+    build:
+      context: ./ws
+    environment:
+      - SOCKET_HOST=0.0.0.0
+      - SOCKET_PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - APPS_NAMES=swlogs:app1 swlogs:app2 swlogs:app3
+    ports:
+      - "3000:3000"
+    depends_on:
+      - the-fantom-menace
+      - revenge-of-the-sith
+
+  # ===== Front Vue app ===================================
+  front:
+    build:
+      context: ./front
+    ports:
+      - "8080:80"
+    depends_on:
+      - web-socket
